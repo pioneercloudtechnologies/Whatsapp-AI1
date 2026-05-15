@@ -83,7 +83,11 @@ app.post("/webhook", async (req, res) => {
 })
 
 const PORT = process.env.PORT || 3000
-
+app.post("/register", (req, res) => {
+  const { name, phone } = req.body
+  console.log("New user:", name, phone)
+  res.json({ success: true })
+})
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 }) 
