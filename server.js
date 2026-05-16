@@ -11,6 +11,7 @@ app.use(express.json())
 app.use(cors())
 
 const processedMessages = new Set()
+const userConversations = {}
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -57,7 +58,31 @@ app.post("/webhook", async (req, res) => {
 
     console.log("User:", userMessage)
 
-    const aiReply = "Hey! I got your message 😄"
+    if (!userConversations[from]) {
+  userConversations[from] = [
+    {
+      role: "system",
+      content: "You are a friendly, natural WhatsApp friend. Talk casually, warmly, and briefly like a real friend."
+    }
+  ]
+}
+
+userConversations[from].push({
+  role: "user",
+  content: userMessage
+})
+
+const completion = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: userConversations[from]
+})
+
+const aiReply = completion.choices[0].message.content
+
+userConversations[from].push({
+  role: "assistant",
+  content: aiReply
+})
 
     await axios.post(
       `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
