@@ -4,6 +4,7 @@ const express = require("express")
 const axios = require("axios")
 const OpenAI = require("openai")
 const cors = require("cors")
+const { createClient } = require("@supabase/supabase-js")
 
 const app = express()
 
@@ -16,6 +17,11 @@ const userConversations = {}
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+)
 
 app.get("/", (req, res) => {
   res.send("Bot is running")
