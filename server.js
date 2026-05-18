@@ -122,6 +122,13 @@ app.post("/register", async (req, res) => {
 
     console.log("New user:", name, phone)
 
+    await supabase.from("users").insert([
+     {
+       name: name,
+       phone: phone
+     }
+   ])
+
     const welcomeMessage = `Hi ${name}! Your AI WhatsApp friend is now connected 🤖 Send any message to start chatting.`
 
     await axios.post(
