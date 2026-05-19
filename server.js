@@ -90,6 +90,13 @@ userConversations[from].push({
   content: aiReply
 })
 
+if (userConversations[from].length > 12) {
+  userConversations[from] = [
+    userConversations[from][0],
+    ...userConversations[from].slice(-10)
+  ]
+}
+
     await axios.post(
       `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
       {
@@ -118,13 +125,14 @@ userConversations[from].push({
 const PORT = process.env.PORT || 3000
 app.post("/register", async (req, res) => {
   try {
-    const { name, phone } = req.body
+    const { name, email, phone } = req.body
 
     console.log("New user:", name, phone)
 
     const { data, error } = await supabase.from("users").insert([
   {
     name: name,
+    email: email,
     phone: phone
   }
 ])
