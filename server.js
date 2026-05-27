@@ -4,12 +4,14 @@ const express = require("express")
 const axios = require("axios")
 const OpenAI = require("openai")
 const cors = require("cors")
-const { createClient } = require("@supabase/supabase-js")
+const supabase = require("./database/supabase")
+const webhookRoutes = require("./routes/webhook")
 
 const app = express()
 
 app.use(express.json())
 app.use(cors())
+app.use("/", webhookRoutes)
 
 const processedMessages = new Set()
 const userConversations = {}
@@ -18,60 +20,12 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY
-)
 
 app.get("/", (req, res) => {
   res.send("Bot is running")
 })
 
-app.get("/webhook", (req, res) => {
 
-  const VERIFY_TOKEN = "hello"
-
-  const mode = req.query["hub.mode"]
-  const token = req.query["hub.verify_token"]
-  const challenge = req.query["hub.challenge"]
-
-  if (mode && token === VERIFY_TOKEN) {
-    res.status(200).send(challenge)
-  } else {
-    res.sendStatus(403)
-  }
-
-})
-
-app.post("/webhook", async (req, res) => {
-  try {
-    const message = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
-
-    if (!message || message.type !== "text") {
-      return res.sendStatus(200)
-    }
-
-    const messageId = message.id
-
-    if (processedMessages.has(messageId)) {
-      return res.sendStatus(200)
-    }
-
-    processedMessages.add(messageId)
-
-    const userMessage = message.text.body
-    const from = message.from
-
-    console.log("User:", userMessage)
-
-    if (!userConversations[from]) {
-  userConversations[from] = [
-    {
-      role: "system",
-      content: "You are a friendly, natural WhatsApp friend. Talk casually, warmly, and briefly like a real friend."
-    }
-  ]
-}
 
 userConversations[from].push({
   role: "user",
