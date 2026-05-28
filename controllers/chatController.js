@@ -1,6 +1,12 @@
 const axios = require("axios")
 const OpenAI = require("openai")
 
+
+const {
+  saveMemory,
+  getMemories
+} = require("../services/memoryService")
+
 const {
   getOrCreateConversation,
   saveMessage,
@@ -33,7 +39,36 @@ const handleWebhookMessage = async (req, res) => {
     processedMessages.add(messageId)
 
     const userMessage = message.text.body
+    const lowerMessage =
+      userMessage.toLowerCase()
+
+    if (
+      lowerMessage.includes("favorite color is")
+    ) {
+
+      const color =
+        lowerMessage.split(
+          "favorite color is"
+        )[1]?.trim()
+
+      if (color) {
+
+        await saveMemory(
+          from,
+          "favorite_color",
+          color
+     )
+  }
+}
     const from = message.from
+
+    const memories =
+      await getMemories(from)
+
+      const memoryContext =
+        memories.map(memory =>
+          `${memory.memory_key}: ${memory.memory_value}`
+        ).join("\n")
 
     const conversation =
       await getOrCreateConversation(from)
@@ -58,7 +93,12 @@ const handleWebhookMessage = async (req, res) => {
           {
            role: "system",
            content:
-             "You are a friendly, natural WhatsApp friend. Talk casually, warmly, and briefly like a real friend."
+             `You are a friendly, natural WhatsApp friend.
+
+           User memories:
+           ${memoryContext}
+
+           Talk casually, warmly, and naturally.`
           },
           ...recentMessages,
           {
