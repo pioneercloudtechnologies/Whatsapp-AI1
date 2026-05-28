@@ -27,54 +27,6 @@ app.get("/", (req, res) => {
 
 
 
-userConversations[from].push({
-  role: "user",
-  content: userMessage
-})
-
-const completion = await client.chat.completions.create({
-  model: "gpt-4o-mini",
-  messages: userConversations[from]
-})
-
-const aiReply = completion.choices[0].message.content
-
-userConversations[from].push({
-  role: "assistant",
-  content: aiReply
-})
-
-if (userConversations[from].length > 12) {
-  userConversations[from] = [
-    userConversations[from][0],
-    ...userConversations[from].slice(-10)
-  ]
-}
-
-    await axios.post(
-      `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
-      {
-        messaging_product: "whatsapp",
-        to: from,
-        text: {
-          body: aiReply
-        }
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-          "Content-Type": "application/json"
-        }
-      }
-    )
-
-    res.sendStatus(200)
-
-  } catch (error) {
-    console.log(error.response?.data || error.message)
-    res.sendStatus(500)
-  }
-})
 
 const PORT = process.env.PORT || 3000
 app.post("/register", async (req, res) => {
