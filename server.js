@@ -13,8 +13,6 @@ app.use(express.json())
 app.use(cors())
 app.use("/", webhookRoutes)
 
-const processedMessages = new Set()
-const userConversations = {}
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
