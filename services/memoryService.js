@@ -17,11 +17,6 @@ const saveMemory = async (
     ])
 }
 
-module.exports = {
-  saveMemory,
-  getMemories
-}
-
 const getMemories = async (phone) => {
 
   const { data, error } = await supabase
@@ -35,4 +30,9 @@ const getMemories = async (phone) => {
   }
 
   return data
+}
+
+module.exports = {
+  saveMemory,
+  getMemories
 }
