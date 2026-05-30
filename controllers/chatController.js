@@ -62,6 +62,8 @@ const handleWebhookMessage = async (req, res) => {
     const conversation =
       await getOrCreateConversation(from)
 
+    console.log("Conversation:", conversation)
+
     const recentMessages =
       await getRecentMessages(conversation.id)
 
