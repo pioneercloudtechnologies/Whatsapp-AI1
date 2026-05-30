@@ -7,10 +7,14 @@ const cors = require("cors")
 const supabase = require("./database/supabase")
 const webhookRoutes = require("./routes/webhook")
 
+const conversationRoutes =
+  require("./routes/conversations")
+
 const app = express()
 
 app.use(express.json())
 app.use(cors())
+app.use("/", conversationRoutes)
 app.use("/", webhookRoutes)
 
 

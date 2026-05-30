@@ -1,6 +1,9 @@
 const axios = require("axios")
 const OpenAI = require("openai")
 
+const {
+  getUserSettings
+} = require("../services/settingsService")
 
 const {
   saveMemory,
@@ -62,6 +65,9 @@ const handleWebhookMessage = async (req, res) => {
 }
     const from = message.from
 
+    const settings =
+      await getUserSettings(from)
+
     const memories =
       await getMemories(from)
 
@@ -93,7 +99,21 @@ const handleWebhookMessage = async (req, res) => {
           {
            role: "system",
            content:
-             `You are a friendly, natural WhatsApp friend.
+             `You are a WhatsApp AI friend.
+
+           Personality:
+           ${settings.personality}
+
+           Tone:
+           ${settings.tone}
+
+           Creativity:
+           ${settings.creativity}
+
+           User memories:
+           ${memoryContext}
+
+           Talk naturally and casually.`
 
            User memories:
            ${memoryContext}
