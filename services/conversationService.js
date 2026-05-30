@@ -2,24 +2,32 @@ const supabase = require("../database/supabase")
 
 const getOrCreateConversation = async (phone) => {
 
-  let { data: conversation } = await supabase
+  let { data: conversation, error } = await supabase
     .from("conversations")
     .select("*")
     .eq("user_phone", phone)
     .single()
 
+  console.log("Find conversation:", conversation)
+  console.log("Find error:", error)
+
   if (!conversation) {
 
-    const { data: newConversation } =
-      await supabase
-        .from("conversations")
-        .insert([
-          {
-            user_phone: phone
-          }
-        ])
-        .select()
-        .single()
+    const {
+      data: newConversation,
+      error: insertError
+    } = await supabase
+      .from("conversations")
+      .insert([
+        {
+          user_phone: phone
+        }
+      ])
+      .select()
+      .single()
+
+    console.log("New conversation:", newConversation)
+    console.log("Insert error:", insertError)
 
     conversation = newConversation
   }
