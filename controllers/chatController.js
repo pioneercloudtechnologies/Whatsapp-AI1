@@ -42,28 +42,11 @@ const handleWebhookMessage = async (req, res) => {
     processedMessages.add(messageId)
 
     const userMessage = message.text.body
+    const from = message.from
     const lowerMessage =
       userMessage.toLowerCase()
 
-    if (
-      lowerMessage.includes("favorite color is")
-    ) {
-
-      const color =
-        lowerMessage.split(
-          "favorite color is"
-        )[1]?.trim()
-
-      if (color) {
-
-        await saveMemory(
-          from,
-          "favorite_color",
-          color
-     )
-  }
-}
-    const from = message.from
+  
 
     const settings =
       await getUserSettings(from)
@@ -97,28 +80,22 @@ const handleWebhookMessage = async (req, res) => {
         model: "gpt-4o-mini",
         messages: [
           {
-           role: "system",
-           content:
-             `You are a WhatsApp AI friend.
+            role: "system",
+            content: `You are a WhatsApp AI friend.
 
-           Personality:
-           ${settings.personality}
+          Personality:
+          ${settings.personality}
 
-           Tone:
-           ${settings.tone}
+          Tone:
+          ${settings.tone}
 
-           Creativity:
-           ${settings.creativity}
+          Creativity:
+          ${settings.creativity}
 
-           User memories:
-           ${memoryContext}
+          User memories:
+          ${memoryContext}
 
-           Talk naturally and casually.`
-
-           User memories:
-           ${memoryContext}
-
-           Talk casually, warmly, and naturally.`
+          Talk casually, warmly, and naturally.`
           },
           ...recentMessages,
           {
