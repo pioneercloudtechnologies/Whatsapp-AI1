@@ -6,7 +6,7 @@ const saveMemory = async (
   value
 ) => {
 
-  await supabase
+  const { data, error } = await supabase
     .from("memories")
     .insert([
       {
@@ -15,6 +15,8 @@ const saveMemory = async (
         memory_value: value
       }
     ])
+  console.log("Memory insert:", data)
+  console.log("Memory error:", error)
 }
 
 const getMemories = async (phone) => {
