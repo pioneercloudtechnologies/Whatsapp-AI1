@@ -46,6 +46,30 @@ const handleWebhookMessage = async (req, res) => {
     const lowerMessage =
       userMessage.toLowerCase()
 
+    if (
+      lowerMessage.includes("favorite color is")
+    ) {
+
+      const color =
+        lowerMessage
+          .split("favorite color is")[1]
+         ?.trim()
+
+    if (color) {
+
+      await saveMemory(
+        from,
+        "favorite_color",
+        color
+      )
+
+      console.log(
+        "Memory saved:",
+        color
+      )
+    }
+  }
+
   
 
     const settings =
