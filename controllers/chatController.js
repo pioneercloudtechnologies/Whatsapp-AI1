@@ -11,6 +11,10 @@ const {
 } = require("../services/memoryService")
 
 const {
+  extractMemory
+} = require("../services/memoryExtractor")
+
+const {
   getOrCreateConversation,
   saveMessage,
   getRecentMessages
@@ -43,33 +47,32 @@ const handleWebhookMessage = async (req, res) => {
 
     const userMessage = message.text.body
     const from = message.from
-    const lowerMessage =
-      userMessage.toLowerCase()
+
+    const extractedMemory =
+      await extractMemory(userMessage)
+
+    console.log(
+      "Extracted memory:",
+      extractedMemory
+    )
+
     
-    console.log("Lower message:", lowerMessage)
 
-    if (
-      lowerMessage.includes("favorite color is") ||
-      lowerMessage.includes("favourite colour is")
-    ) {
+    
+    
+    if (extractedMemory.should_save) {
 
-      const color =
-        lowerMessage.includes("favorite color is")
-          ? lowerMessage.split("favorite color is")[1]?.trim()
-          : lowerMessage.split("favourite colour is")[1]?.trim()
+      await saveMemory(
+        from,
+        extractedMemory.key,
+        extractedMemory.value
+      )
 
-      console.log("Detected color:", color)
-
-      if (color) {
-
-        await saveMemory(
-          from,
-          "favorite_color",
-          color
-        )
-
-        console.log("Memory saved:", color)
-      }
+      console.log(
+        "Auto memory saved:",
+        extractedMemory.key,
+        extractedMemory.value
+      )
    }
 
   
