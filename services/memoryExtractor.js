@@ -16,16 +16,54 @@ const extractMemory = async (message) => {
         {
           role: "system",
           content: `
-Extract important user facts.
 
-Return JSON:
+Extract ONLY long-term personal information.
 
-{
-  "should_save": true or false,
+Examples:
+- name
+- age
+- city
+- country
+- interests
+- hobbies
+- favorite things
+- goals
+- job
+- language
+
+DO NOT save:
+- questions
+- temporary requests
+- greetings
+- random conversation
+
+Examples:
+
+"My name is Mazen"
+→ {
+  "should_save": true,
+  "key": "name",
+  "value": "Mazen"
+}
+
+"I live in Jeddah"
+→ {
+  "should_save": true,
+  "key": "city",
+  "value": "Jeddah"
+}
+
+"What is my name?"
+→ {
+  "should_save": false,
   "key": "",
   "value": ""
 }
+
+Return ONLY valid JSON.
 `
+}
+
         },
         {
           role: "user",
