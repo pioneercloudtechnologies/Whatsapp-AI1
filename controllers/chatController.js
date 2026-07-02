@@ -93,9 +93,13 @@ const handleWebhookMessage = async (req, res) => {
 
     console.log("Conversation:", conversation)
 
+    if (!conversation) {
+      console.log("Conversation is null")
+      return res.sendStatus(500)
+    }
+
     const recentMessages =
       await getRecentMessages(conversation.id)
-
     await saveMessage(
       conversation.id,
       "user",
