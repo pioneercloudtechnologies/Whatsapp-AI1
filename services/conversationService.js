@@ -41,15 +41,19 @@ const saveMessage = async (
   content
 ) => {
 
-  await supabase
-    .from("messages")
-    .insert([
-      {
-        conversation_id: conversationId,
-        role,
-        content
-      }
-    ])
+  const { data, error } =
+    await supabase
+      .from("messages")
+      .insert([
+        {
+          conversation_id: conversationId,
+          role,
+          content
+        }
+      ])
+
+  console.log("Message insert:", data)
+  console.log("Message error:", error)
 }
 
 const getRecentMessages = async (
