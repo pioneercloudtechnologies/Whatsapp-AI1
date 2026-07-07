@@ -16,17 +16,21 @@ const saveMemory = async (
 
   if (existingMemory) {
 
-    const { error } =
-      await supabase
-        .from("memories")
-        .update({
-          memory_value: value
-        })
-        .eq("id", existingMemory.id)
+  console.log("Existing memory:", existingMemory)
 
-    console.log("Memory updated:", error)
+  const { data, error } =
+    await supabase
+      .from("memories")
+      .update({
+        memory_value: value
+      })
+      .eq("id", existingMemory.id)
+      .select()
 
-  } else {
+  console.log("Updated data:", data)
+  console.log("Update error:", error)
+
+} else {
 
     const { error } =
       await supabase
