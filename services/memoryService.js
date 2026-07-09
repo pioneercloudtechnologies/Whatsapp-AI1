@@ -1,12 +1,8 @@
 const supabase = require("../database/supabase")
 
-const saveMemory = async (
-  phone,
-  key,
-  value
-) => {
+const saveMemory = async (phone, key, value) => {
 
-  const { data: existingMemory } =
+  const { data: existingMemory, error: findError } =
     await supabase
       .from("memories")
       .select("*")
@@ -14,25 +10,26 @@ const saveMemory = async (
       .eq("memory_key", key)
       .single()
 
+  console.log("Existing memory:", existingMemory)
+  console.log("Find error:", findError)
+
   if (existingMemory) {
 
-  console.log("Existing memory:", existingMemory)
+    const { data, error } =
+      await supabase
+        .from("memories")
+        .update({
+          memory_value: value
+        })
+        .eq("id", existingMemory.id)
+        .select()
 
-  const { data, error } =
-    await supabase
-      .from("memories")
-      .update({
-        memory_value: value
-      })
-      .eq("id", existingMemory.id)
-      .select()
+    console.log("Updated row:", data)
+    console.log("Update error:", error)
 
-  console.log("Updated data:", data)
-  console.log("Update error:", error)
+  } else {
 
-} else {
-
-    const { error } =
+    const { data, error } =
       await supabase
         .from("memories")
         .insert([
@@ -42,8 +39,10 @@ const saveMemory = async (
             memory_value: value
           }
         ])
+        .select()
 
-    console.log("Memory inserted:", error)
+    console.log("Inserted row:", data)
+    console.log("Insert error:", error)
   }
 }
 
