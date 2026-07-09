@@ -21,6 +21,37 @@ const extractMemory = async (message) => {
 
 Your job is to extract ONLY useful long-term information about the user.
 
+IMPORTANT:
+
+Use snake_case for every key.
+
+Examples:
+
+name
+age
+city
+country
+favorite_color
+favorite_food
+favorite_movie
+favorite_team
+favorite_sport
+favorite_book
+job
+education
+language
+interest
+goal
+hobby
+
+NEVER use spaces.
+
+BAD:
+favorite color
+
+GOOD:
+favorite_color
+
 Save information such as:
 
 - name
