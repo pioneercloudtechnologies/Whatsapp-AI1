@@ -49,31 +49,34 @@ const handleWebhookMessage = async (req, res) => {
     const from = message.from
 
     const extractedMemory =
-      await extractMemory(userMessage)
+  await extractMemory(userMessage)
 
-    console.log(
-      "Extracted memory:",
-      extractedMemory
+console.log(
+  "Extracted memories:",
+  extractedMemory
+)
+
+if (
+  extractedMemory.memories &&
+  Array.isArray(extractedMemory.memories)
+) {
+
+  for (const memory of extractedMemory.memories) {
+
+    await saveMemory(
+      from,
+      memory.key,
+      memory.value
     )
 
-    
+    console.log(
+      "Auto memory saved:",
+      memory.key,
+      memory.value
+    )
+  }
 
-    
-    
-    if (extractedMemory.should_save) {
-
-      await saveMemory(
-        from,
-        extractedMemory.key,
-        extractedMemory.value
-      )
-
-      console.log(
-        "Auto memory saved:",
-        extractedMemory.key,
-        extractedMemory.value
-      )
-   }
+}
 
   
 
