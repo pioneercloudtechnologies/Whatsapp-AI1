@@ -7,7 +7,8 @@ const {
 
 const {
   saveMemory,
-  getMemories
+  getMemories,
+  searchRelevantMemories
 } = require("../services/memoryService")
 
 const {
@@ -84,7 +85,10 @@ if (
       await getUserSettings(from)
 
     const memories =
-      await getMemories(from)
+  await searchRelevantMemories(
+    from,
+    userMessage
+  )
 
       const memoryContext =
         memories.map(memory =>
