@@ -6,18 +6,17 @@ const {
 } = require("../services/memoryClassifier")
 
 const {
+  extractMemory
+} = require("../services/memoryExtractor")
+
+const {
   getUserSettings
 } = require("../services/settingsService")
 
 const {
   saveMemory,
-  getMemories,
   searchRelevantMemories
 } = require("../services/memoryService")
-
-const {
-  extractMemory
-} = require("../services/memoryExtractor")
 
 const {
   getOrCreateConversation,
@@ -53,133 +52,168 @@ const handleWebhookMessage = async (req, res) => {
     const userMessage = message.text.body
     const from = message.from
 
+    // -----------------------------
+    // MEMORY CLASSIFIER
+    // -----------------------------
 
-if (
-  extractedMemory.memories &&
-  Array.isArray(extractedMemory.memories)
-) {
-
-  const decision =
-  await shouldExtractMemory(userMessage)
-
-console.log("Memory decision:", decision)
-
-if (decision.save) {
-
- const decision =
-  await shouldExtractMemory(userMessage)
-
-console.log("Memory decision:", decision)
-
-if (decision.save) {
-
-  const extractedMemory =
-    await extractMemory(userMessage)
-
-  console.log(
-    "Extracted memories:",
-    extractedMemory
-  )
-
-  for (const memory of extractedMemory.memories) {
-
-    await saveMemory(
-      from,
-      memory.key,
-      memory.value
-    )
+    const decision =
+      await shouldExtractMemory(userMessage)
 
     console.log(
-      "Auto memory saved:",
-      memory.key,
-      memory.value
+      "Memory decision:",
+      decision
     )
-  }
 
-} else {
+    if (decision.save) {
 
-  console.log(
-    "Memory ignored."
-  )
+      const extractedMemory =
+        await extractMemory(userMessage)
 
-}
+      console.log(
+        "Extracted memories:",
+        extractedMemory
+      )
 
-} else {
+      if (
+        extractedMemory.memories &&
+        Array.isArray(extractedMemory.memories)
+      ) {
 
-  console.log(
-    "Memory ignored."
-  )
+        for (const memory of extractedMemory.memories) {
 
-}
+          await saveMemory(
+            from,
+            memory.key,
+            memory.value
+          )
 
-}
+          console.log(
+            "Auto memory saved:",
+            memory.key,
+            memory.value
+          )
 
-  
+        }
+
+      }
+
+    } else {
+
+      console.log(
+        "Memory ignored."
+      )
+
+    }
+
+    // -----------------------------
+    // SETTINGS
+    // -----------------------------
 
     const settings =
       await getUserSettings(from)
 
-    const memories =
-  await searchRelevantMemories(
-    from,
-    userMessage
-  )
+    // -----------------------------
+    // SEMANTIC MEMORY SEARCH
+    // -----------------------------
 
-      const memoryContext =
-        memories.map(memory =>
+    const memories =
+      await searchRelevantMemories(
+        from,
+        userMessage
+      )
+
+    const memoryContext =
+      memories
+        .map(memory =>
           `${memory.memory_key}: ${memory.memory_value}`
-        ).join("\n")
+        )
+        .join("\n")
+
+    console.log(
+      "Relevant memories:",
+      memories.length
+    )
+
+    // -----------------------------
+    // CONVERSATION
+    // -----------------------------
 
     const conversation =
       await getOrCreateConversation(from)
 
-    console.log("Conversation:", conversation)
+    console.log(
+      "Conversation:",
+      conversation
+    )
 
     if (!conversation) {
-      console.log("Conversation is null")
+
+      console.log(
+        "Conversation is null"
+      )
+
       return res.sendStatus(500)
+
     }
 
     const recentMessages =
-      await getRecentMessages(conversation.id)
+      await getRecentMessages(
+        conversation.id
+      )
+
     await saveMessage(
       conversation.id,
       "user",
       userMessage
     )
 
-    console.log("User:", userMessage)
+    console.log(
+      "User:",
+      userMessage
+    )
 
-    
+    // -----------------------------
+    // GPT
+    // -----------------------------
 
     const completion =
       await client.chat.completions.create({
+
         model: "gpt-4o-mini",
+
         messages: [
+
           {
             role: "system",
-            content: `You are a WhatsApp AI friend.
 
-          Personality:
-          ${settings.personality}
+            content: `You are a friendly WhatsApp AI assistant.
 
-          Tone:
-          ${settings.tone}
+Personality:
+${settings.personality}
 
-          Creativity:
-          ${settings.creativity}
+Tone:
+${settings.tone}
 
-          User memories:
-          ${memoryContext}
+Creativity:
+${settings.creativity}
 
-          Talk casually, warmly, and naturally.`
+Relevant user memories:
+${memoryContext}
+
+Use the memories naturally.
+Do not mention them unless they help answer the user's message.
+Talk casually and naturally like a real friend.`
           },
+
           ...recentMessages,
+
           {
-           role: "user",
-           content: userMessage
+            role: "user",
+            content: userMessage
           }
+
         ]
+
       })
 
     const aiReply =
@@ -191,10 +225,14 @@ if (decision.save) {
       aiReply
     )
 
-
+    // -----------------------------
+    // SEND WHATSAPP MESSAGE
+    // -----------------------------
 
     await axios.post(
+
       `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
+
       {
         messaging_product: "whatsapp",
         to: from,
@@ -202,13 +240,16 @@ if (decision.save) {
           body: aiReply
         }
       },
+
       {
         headers: {
           Authorization:
             `Bearer ${process.env.WHATSAPP_TOKEN}`,
-          "Content-Type": "application/json"
+          "Content-Type":
+            "application/json"
         }
       }
+
     )
 
     res.sendStatus(200)
@@ -216,11 +257,14 @@ if (decision.save) {
   } catch (error) {
 
     console.log(
-      error.response?.data || error.message
+      error.response?.data ||
+      error.message
     )
 
     res.sendStatus(500)
+
   }
+
 }
 
 module.exports = {

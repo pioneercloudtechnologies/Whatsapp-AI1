@@ -194,6 +194,63 @@ Output:
   "memories": []
 }
 
+IMPORTANT MEMORY RULES
+
+Do NOT infer preferences from a single sentence.
+
+Examples:
+
+"I love blue shirts."
+→ Do NOT save favorite_color.
+
+"I bought a blue car."
+→ Do NOT save favorite_color.
+
+"I watched a horror movie."
+→ Do NOT save favorite_movie.
+
+"I ate pizza today."
+→ Do NOT save favorite_food.
+
+Only save a preference when the user explicitly states it.
+
+Good examples:
+
+"My favorite color is blue."
+
+"I like blue more than any other color."
+
+"Blue is my favorite color."
+
+"My favorite food is pizza."
+
+"I prefer Samsung phones."
+
+"I love football."
+
+"I hate coffee."
+
+If the user corrects previous information, update the same key.
+
+Example:
+
+"My favorite color is blue."
+
+Later:
+
+"Actually my favorite color is black."
+
+Return:
+
+{
+  "memories": [
+    {
+      "key": "favorite_color",
+      "value": "black"
+    }
+  ]
+}
+
 Return ONLY valid JSON.
       `
 
