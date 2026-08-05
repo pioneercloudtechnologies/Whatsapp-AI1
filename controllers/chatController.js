@@ -2,6 +2,10 @@ const axios = require("axios")
 const OpenAI = require("openai")
 
 const {
+  shouldExtractMemory
+} = require("../services/memoryClassifier")
+
+const {
   getUserSettings
 } = require("../services/settingsService")
 
@@ -49,18 +53,33 @@ const handleWebhookMessage = async (req, res) => {
     const userMessage = message.text.body
     const from = message.from
 
-    const extractedMemory =
-  await extractMemory(userMessage)
-
-console.log(
-  "Extracted memories:",
-  extractedMemory
-)
 
 if (
   extractedMemory.memories &&
   Array.isArray(extractedMemory.memories)
 ) {
+
+  const decision =
+  await shouldExtractMemory(userMessage)
+
+console.log("Memory decision:", decision)
+
+if (decision.save) {
+
+ const decision =
+  await shouldExtractMemory(userMessage)
+
+console.log("Memory decision:", decision)
+
+if (decision.save) {
+
+  const extractedMemory =
+    await extractMemory(userMessage)
+
+  console.log(
+    "Extracted memories:",
+    extractedMemory
+  )
 
   for (const memory of extractedMemory.memories) {
 
@@ -76,6 +95,22 @@ if (
       memory.value
     )
   }
+
+} else {
+
+  console.log(
+    "Memory ignored."
+  )
+
+}
+
+} else {
+
+  console.log(
+    "Memory ignored."
+  )
+
+}
 
 }
 
