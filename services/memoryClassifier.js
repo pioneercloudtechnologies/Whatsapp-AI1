@@ -14,11 +14,13 @@ const shouldExtractMemory = async (message) => {
         {
           role: "system",
           content: `
-You are an AI that decides whether a user's message contains NEW long-term personal information.
+You are a memory gate for an AI assistant.
 
-Only answer with valid JSON.
+Your job is to decide whether the user's latest message contains NEW or UPDATED long-term information about the user.
 
-Return:
+Return ONLY valid JSON.
+
+Either:
 
 {
   "save": true
@@ -30,57 +32,105 @@ or
   "save": false
 }
 
-Save ONLY if the message introduces or updates facts about the user such as:
+Save if the message explicitly states or updates:
 
-- name
-- age
-- birthday
-- city
-- country
-- education
-- job
-- hobbies
-- interests
-- goals
-- dreams
-- favorite things
-- dislikes
-- pets
-- family
-- long-term preferences
+• name
+• nickname
+• age
+• birthday
+• city
+• country
+• nationality
+• language
+• education
+• job
+• company
+• relationship status
+• family members
+• pets
+• hobbies
+• interests
+• skills
+• goals
+• dreams
+• favorite things
+• dislikes
+• long-term preferences
+• anything the user says will probably still be true weeks or months later
+
+IMPORTANT:
+
+Save when the user EXPLICITLY states a preference.
+
+Examples that MUST return:
+
+{
+  "save": true
+}
+
+"My favorite color is green."
+
+"My favorite food is pizza."
+
+"My favorite phone brand is Samsung."
+
+"I prefer Android."
+
+"I hate coffee."
+
+"I love football."
+
+"I study Computer Science."
+
+"I live in Jeddah."
+
+"My name is Mazen."
+
+"I'm 20 years old."
+
+"Actually my favorite color is black."
 
 DO NOT save:
 
-- greetings
-- jokes
-- questions
-- opinions about today's conversation
-- temporary plans
-- shopping requests
-- clothing colors
-- food being eaten today
-- emotions
-- random conversation
+Greetings
 
-Examples:
+Questions
 
-"I'm 20."
-→ save true
+Jokes
 
-"My favorite color is black."
-→ save true
+Shopping requests
+
+Temporary plans
+
+Current activities
+
+Clothing colors
+
+Food eaten today
+
+Movies watched today
+
+One-time events
+
+Examples that MUST return:
+
+{
+  "save": false
+}
 
 "I love blue shirts."
-→ save false
 
 "I bought a blue shirt."
-→ save false
 
-"I'm studying Computer Science."
-→ save true
+"I watched Avengers yesterday."
+
+"I ate pizza today."
+
+"I'm going shopping."
+
+"Can you help me?"
 
 "What is my favorite color?"
-→ save false
 
 Return ONLY JSON.
 `
