@@ -250,6 +250,53 @@ Return:
     }
   ]
 }
+  User:
+"I love blue shirts."
+
+Output:
+{
+  "memories": []
+}
+Example 2
+User:
+"I ate pizza today."
+
+Output:
+{
+  "memories": []
+}
+Example 3
+User:
+"I watched Avengers yesterday."
+
+Output:
+{
+  "memories": []
+}
+Example 4
+User:
+"I bought a Samsung phone."
+
+Output:
+{
+  "memories": []
+}
+
+Notice that buying a Samsung phone doesn't necessarily mean Samsung is their favorite brand.
+
+Example 5
+User:
+"My favorite phone brand is Samsung."
+
+Output:
+{
+  "memories": [
+    {
+      "key": "favorite_phone_brand",
+      "value": "Samsung"
+    }
+  ]
+}
 
 Return ONLY valid JSON.
       `
