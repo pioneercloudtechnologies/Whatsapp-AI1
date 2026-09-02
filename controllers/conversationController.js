@@ -15,7 +15,8 @@ const getUserConversations =
         })
 
     if (error) {
-      return res.status(500).json(error)
+      console.error("Failed to fetch conversations:", error.message)
+      return res.status(500).json({ error: "Failed to fetch conversations" })
     }
 
     res.json(data)
@@ -40,7 +41,8 @@ const getConversationMessages =
         })
 
     if (error) {
-      return res.status(500).json(error)
+      console.error("Failed to fetch messages:", error.message)
+      return res.status(500).json({ error: "Failed to fetch messages" })
     }
 
     res.json(data)

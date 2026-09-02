@@ -1,17 +1,10 @@
-const axios = require("axios")
-const OpenAI = require("openai")
+const client = require("../services/openaiClient")
 
-const {
-  shouldExtractMemory
-} = require("../services/memoryClassifier")
-
-const {
-  extractMemory
-} = require("../services/memoryExtractor")
-
-const {
-  getUserSettings
-} = require("../services/settingsService")
+const { extractMemory } = require("../services/memoryExtractor")
+const { getUserSettings } = require("../services/settingsService")
+const { handleCommand } = require("../services/commandService")
+const { transcribeAudio } = require("../services/mediaService")
+const { isDuplicateMessage } = require("../services/dedupeService")
 
 const {
   saveMemory,
@@ -24,169 +17,142 @@ const {
   getRecentMessages
 } = require("../services/conversationService")
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-})
+const {
+  sendWhatsAppMessage,
+  markAsReadWithTyping,
+  downloadMedia
+} = require("../services/whatsappService")
 
-const processedMessages = new Set()
+const UNSUPPORTED_MESSAGE =
+  "I can only chat over text, voice notes 🎤, and photos 📸 right now — try one of those!"
 
-const handleWebhookMessage = async (req, res) => {
+const FAILURE_MESSAGE =
+  "Oops, something went wrong on my end 😅 give it another try in a bit."
 
-  try {
+const resolveIncomingMessage = async (message) => {
 
-    const message =
-      req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+  if (message.type === "text") {
+    return { text: message.text.body }
+  }
 
-    if (!message || message.type !== "text") {
-      return res.sendStatus(200)
+  if (message.type === "audio") {
+    const { buffer, mimeType } = await downloadMedia(message.audio.id)
+    const text = await transcribeAudio(buffer, mimeType)
+    return { text }
+  }
+
+  if (message.type === "image") {
+    const { buffer, mimeType } = await downloadMedia(message.image.id)
+    return {
+      text: message.image.caption || "",
+      imageBase64: buffer.toString("base64"),
+      imageMimeType: mimeType
     }
+  }
 
-    const messageId = message.id
+  return null
+}
 
-    if (processedMessages.has(messageId)) {
-      return res.sendStatus(200)
+const processMessage = async (message) => {
+
+  const from = message.from
+
+  await markAsReadWithTyping(message.id)
+
+  const conversation = await getOrCreateConversation(from)
+
+  if (!conversation) {
+    console.error("Could not find or create conversation for", from)
+    return
+  }
+
+  const resolved = await resolveIncomingMessage(message)
+
+  if (!resolved) {
+    await sendWhatsAppMessage(from, UNSUPPORTED_MESSAGE)
+    return
+  }
+
+  const userMessage = resolved.text?.trim() || ""
+
+  if (userMessage.startsWith("/")) {
+    const reply = await handleCommand(from, conversation.id, userMessage)
+    if (reply) {
+      await sendWhatsAppMessage(from, reply)
+      return
     }
+  }
 
-    processedMessages.add(messageId)
+  // -----------------------------
+  // MEMORY EXTRACTION
+  // -----------------------------
 
-    const userMessage = message.text.body
-    const from = message.from
+  if (userMessage) {
+    try {
+      const extracted = await extractMemory(userMessage)
 
-    // -----------------------------
-    // MEMORY CLASSIFIER
-    // -----------------------------
-
-    const decision =
-      await shouldExtractMemory(userMessage)
-
-    console.log(
-      "Memory decision:",
-      decision
-    )
-
-    if (decision.save) {
-
-      const extractedMemory =
-        await extractMemory(userMessage)
-
-      console.log(
-        "Extracted memories:",
-        extractedMemory
-      )
-
-      if (
-        extractedMemory.memories &&
-        Array.isArray(extractedMemory.memories)
-      ) {
-
-        for (const memory of extractedMemory.memories) {
-
-          await saveMemory(
-            from,
-            memory.key,
-            memory.value
-          )
-
-          console.log(
-            "Auto memory saved:",
-            memory.key,
-            memory.value
-          )
-
+      if (extracted.memories && Array.isArray(extracted.memories)) {
+        for (const memory of extracted.memories) {
+          await saveMemory(from, memory.key, memory.value)
         }
-
       }
-
-    } else {
-
-      console.log(
-        "Memory ignored."
-      )
-
+    } catch (error) {
+      console.error("Memory extraction failed:", error.message)
     }
+  }
 
-    // -----------------------------
-    // SETTINGS
-    // -----------------------------
+  // -----------------------------
+  // SETTINGS + RELEVANT MEMORIES
+  // -----------------------------
 
-    const settings =
-      await getUserSettings(from)
+  const settings = await getUserSettings(from)
 
-    // -----------------------------
-    // SEMANTIC MEMORY SEARCH
-    // -----------------------------
+  const memories = userMessage
+    ? await searchRelevantMemories(from, userMessage)
+    : []
 
-    const memories =
-      await searchRelevantMemories(
-        from,
-        userMessage
-      )
+  const memoryContext = memories
+    .map((memory) => `${memory.memory_key}: ${memory.memory_value}`)
+    .join("\n")
 
-    const memoryContext =
-      memories
-        .map(memory =>
-          `${memory.memory_key}: ${memory.memory_value}`
-        )
-        .join("\n")
+  // -----------------------------
+  // CONVERSATION HISTORY
+  // -----------------------------
 
-    console.log(
-      "Relevant memories:",
-      memories.length
-    )
+  const recentMessages = await getRecentMessages(conversation.id)
 
-    // -----------------------------
-    // CONVERSATION
-    // -----------------------------
+  const historyLabel = resolved.imageBase64
+    ? `[image] ${userMessage}`.trim()
+    : userMessage
 
-    const conversation =
-      await getOrCreateConversation(from)
+  await saveMessage(conversation.id, "user", historyLabel)
 
-    console.log(
-      "Conversation:",
-      conversation
-    )
+  const userContent = resolved.imageBase64
+    ? [
+        { type: "text", text: userMessage || "What do you think of this?" },
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${resolved.imageMimeType};base64,${resolved.imageBase64}`
+          }
+        }
+      ]
+    : userMessage
 
-    if (!conversation) {
+  // -----------------------------
+  // GPT
+  // -----------------------------
 
-      console.log(
-        "Conversation is null"
-      )
+  const completion = await client.chat.completions.create({
 
-      return res.sendStatus(500)
+    model: "gpt-4o-mini",
 
-    }
+    messages: [
 
-    const recentMessages =
-      await getRecentMessages(
-        conversation.id
-      )
+      {
+        role: "system",
 
-    await saveMessage(
-      conversation.id,
-      "user",
-      userMessage
-    )
-
-    console.log(
-      "User:",
-      userMessage
-    )
-
-    // -----------------------------
-    // GPT
-    // -----------------------------
-
-    const completion =
-      await client.chat.completions.create({
-
-        model: "gpt-4o-mini",
-
-        messages: [
-
-          {
-            role: "system",
-
-            content: `You are a friendly WhatsApp AI assistant.
+        content: `You are a friendly WhatsApp AI assistant.
 
 Personality:
 ${settings.personality}
@@ -203,67 +169,67 @@ ${memoryContext}
 Use the memories naturally.
 Do not mention them unless they help answer the user's message.
 Talk casually and naturally like a real friend.`
-          },
-
-          ...recentMessages,
-
-          {
-            role: "user",
-            content: userMessage
-          }
-
-        ]
-
-      })
-
-    const aiReply =
-      completion.choices[0].message.content
-
-    await saveMessage(
-      conversation.id,
-      "assistant",
-      aiReply
-    )
-
-    // -----------------------------
-    // SEND WHATSAPP MESSAGE
-    // -----------------------------
-
-    await axios.post(
-
-      `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
-
-      {
-        messaging_product: "whatsapp",
-        to: from,
-        text: {
-          body: aiReply
-        }
       },
 
+      ...recentMessages,
+
       {
-        headers: {
-          Authorization:
-            `Bearer ${process.env.WHATSAPP_TOKEN}`,
-          "Content-Type":
-            "application/json"
-        }
+        role: "user",
+        content: userContent
       }
 
-    )
+    ]
 
-    res.sendStatus(200)
+  })
 
-  } catch (error) {
+  const aiReply = completion.choices[0].message.content
 
-    console.log(
-      error.response?.data ||
-      error.message
-    )
+  await saveMessage(conversation.id, "assistant", aiReply)
 
-    res.sendStatus(500)
+  // -----------------------------
+  // SEND WHATSAPP MESSAGE
+  // -----------------------------
 
+  await sendWhatsAppMessage(from, aiReply)
+}
+
+const handleWebhookMessage = async (req, res) => {
+
+  const message =
+    req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
+
+  if (!message) {
+    return res.sendStatus(200)
   }
+
+  const duplicate = await isDuplicateMessage(message.id)
+
+  if (duplicate) {
+    return res.sendStatus(200)
+  }
+
+  // Ack WhatsApp immediately — the pipeline below can take several
+  // seconds (LLM calls, embeddings, media downloads) and WhatsApp
+  // retries the webhook if it doesn't get a fast response.
+  res.sendStatus(200)
+
+  processMessage(message).catch(async (error) => {
+
+    console.error(
+      "Failed to process message:",
+      error.response?.data || error.message
+    )
+
+    try {
+      await sendWhatsAppMessage(message.from, FAILURE_MESSAGE)
+    } catch (sendError) {
+      console.error(
+        "Failed to send failure notice:",
+        sendError.response?.data || sendError.message
+      )
+    }
+
+  })
 
 }
 

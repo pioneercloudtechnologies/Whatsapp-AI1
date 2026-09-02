@@ -2,10 +2,12 @@ const express = require("express")
 const router = express.Router()
 
 const { handleWebhookMessage } = require("../controllers/chatController")
+const { verifyWhatsAppSignature } = require("../middleware/verifyWhatsAppSignature")
+const { webhookLimiter } = require("../middleware/rateLimiter")
 
 router.get("/webhook", (req, res) => {
 
-  const VERIFY_TOKEN = "hello"
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN
 
   const mode = req.query["hub.mode"]
   const token = req.query["hub.verify_token"]
@@ -19,6 +21,11 @@ router.get("/webhook", (req, res) => {
 
 })
 
-router.post("/webhook", handleWebhookMessage)
+router.post(
+  "/webhook",
+  webhookLimiter,
+  verifyWhatsAppSignature,
+  handleWebhookMessage
+)
 
 module.exports = router

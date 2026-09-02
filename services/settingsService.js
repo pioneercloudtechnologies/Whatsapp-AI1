@@ -3,39 +3,62 @@ const supabase =
 
 const getUserSettings = async (phone) => {
 
-  let { data, error } = await supabase
+  const { data } = await supabase
     .from("ai_settings")
     .select("*")
     .eq("user_phone", phone)
-    .single()
+    .maybeSingle()
 
-  console.log("Settings:", data)
-  console.log("Settings error:", error)
-
-  if (!data) {
-
-    const {
-      data: newSettings,
-      error: insertError
-    } = await supabase
-      .from("ai_settings")
-      .insert([
-        {
-          user_phone: phone
-        }
-      ])
-      .select()
-      .single()
-
-    console.log("New settings:", newSettings)
-    console.log("Settings insert error:", insertError)
-
-    data = newSettings
+  if (data) {
+    return data
   }
 
-  return data
+  const {
+    data: newSettings,
+    error: insertError
+  } = await supabase
+    .from("ai_settings")
+    .insert([
+      {
+        user_phone: phone
+      }
+    ])
+    .select()
+    .single()
+
+  if (!insertError) {
+    return newSettings
+  }
+
+  if (insertError.code === "23505") {
+    const { data: existing } = await supabase
+      .from("ai_settings")
+      .select("*")
+      .eq("user_phone", phone)
+      .maybeSingle()
+
+    return existing
+  }
+
+  console.error("Failed to create settings:", insertError.message)
+  return { personality: "", tone: "", creativity: "" }
+}
+
+const updatePersonality = async (phone, personality) => {
+  const { error } = await supabase
+    .from("ai_settings")
+    .update({ personality })
+    .eq("user_phone", phone)
+
+  if (error) {
+    console.error("Failed to update personality:", error.message)
+    return false
+  }
+
+  return true
 }
 
 module.exports = {
-  getUserSettings
+  getUserSettings,
+  updatePersonality
 }

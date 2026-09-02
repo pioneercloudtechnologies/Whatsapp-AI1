@@ -12,40 +12,34 @@ const saveMemory = async (
 
   let embedding = null
 
-try {
+  try {
 
-  embedding = await createEmbedding(
-    `Key: ${key}\nValue: ${value}`
-  )
+    embedding = await createEmbedding(
+      `Key: ${key}\nValue: ${value}`
+    )
 
-} catch (error) {
+  } catch (error) {
 
-  console.log(
-    "Embedding error:",
-    error.message
-  )
+    console.error(
+      "Embedding error:",
+      error.message
+    )
 
-}
+  }
+
   const {
-    data: existingMemory,
-    error: findError
+    data: existingMemory
   } =
     await supabase
       .from("memories")
       .select("*")
       .eq("user_phone", phone)
       .eq("memory_key", key)
-      .single()
-
-  console.log("Existing memory:", existingMemory)
-  console.log("Find error:", findError)
+      .maybeSingle()
 
   if (existingMemory) {
 
-    const {
-      data,
-      error
-    } =
+    const { error } =
       await supabase
         .from("memories")
         .update({
@@ -53,17 +47,14 @@ try {
           embedding: embedding
         })
         .eq("id", existingMemory.id)
-        .select()
 
-    console.log("Updated row:", data)
-    console.log("Update error:", error)
+    if (error) {
+      console.error("Failed to update memory:", error.message)
+    }
 
   } else {
 
-    const {
-      data,
-      error
-    } =
+    const { error } =
       await supabase
         .from("memories")
         .insert([
@@ -74,10 +65,10 @@ try {
             embedding: embedding
           }
         ])
-        .select()
 
-    console.log("Inserted row:", data)
-    console.log("Insert error:", error)
+    if (error) {
+      console.error("Failed to insert memory:", error.message)
+    }
 
   }
 }
@@ -89,13 +80,43 @@ const getMemories = async (phone) => {
       .from("memories")
       .select("*")
       .eq("user_phone", phone)
+      .order("memory_key", { ascending: true })
 
   if (error) {
-    console.log(error)
+    console.error("Failed to fetch memories:", error.message)
     return []
   }
 
   return data
+}
+
+const deleteMemory = async (phone, key) => {
+  const { error } = await supabase
+    .from("memories")
+    .delete()
+    .eq("user_phone", phone)
+    .eq("memory_key", key)
+
+  if (error) {
+    console.error("Failed to delete memory:", error.message)
+    return false
+  }
+
+  return true
+}
+
+const deleteAllMemories = async (phone) => {
+  const { error } = await supabase
+    .from("memories")
+    .delete()
+    .eq("user_phone", phone)
+
+  if (error) {
+    console.error("Failed to delete memories:", error.message)
+    return false
+  }
+
+  return true
 }
 
 const searchRelevantMemories = async (
@@ -120,7 +141,7 @@ const searchRelevantMemories = async (
   )
 
   if (error) {
-    console.log("Memory search error:", error)
+    console.error("Memory search error:", error.message)
     return []
   }
 
@@ -130,5 +151,7 @@ const searchRelevantMemories = async (
 module.exports = {
   saveMemory,
   getMemories,
+  deleteMemory,
+  deleteAllMemories,
   searchRelevantMemories
 }

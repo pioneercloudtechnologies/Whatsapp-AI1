@@ -2,37 +2,45 @@ const supabase = require("../database/supabase")
 
 const getOrCreateConversation = async (phone) => {
 
-  let { data: conversation, error } = await supabase
+  const { data: conversation } = await supabase
     .from("conversations")
     .select("*")
     .eq("user_phone", phone)
-    .single()
+    .maybeSingle()
 
-  console.log("Find conversation:", conversation)
-  console.log("Find error:", error)
-
-  if (!conversation) {
-
-    const {
-      data: newConversation,
-      error: insertError
-    } = await supabase
-      .from("conversations")
-      .insert([
-        {
-          user_phone: phone
-        }
-      ])
-      .select()
-      .single()
-
-    console.log("New conversation:", newConversation)
-    console.log("Insert error:", insertError)
-
-    conversation = newConversation
+  if (conversation) {
+    return conversation
   }
 
-  return conversation
+  const {
+    data: newConversation,
+    error: insertError
+  } = await supabase
+    .from("conversations")
+    .insert([
+      {
+        user_phone: phone
+      }
+    ])
+    .select()
+    .single()
+
+  if (!insertError) {
+    return newConversation
+  }
+
+  if (insertError.code === "23505") {
+    const { data: existing } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("user_phone", phone)
+      .maybeSingle()
+
+    return existing
+  }
+
+  console.error("Failed to create conversation:", insertError.message)
+  return null
 }
 
 const saveMessage = async (
@@ -41,7 +49,7 @@ const saveMessage = async (
   content
 ) => {
 
-  const { data, error } =
+  const { error } =
     await supabase
       .from("messages")
       .insert([
@@ -52,8 +60,9 @@ const saveMessage = async (
         }
       ])
 
-  console.log("Message insert:", data)
-  console.log("Message error:", error)
+  if (error) {
+    console.error("Failed to save message:", error.message)
+  }
 }
 
 const getRecentMessages = async (
@@ -70,15 +79,30 @@ const getRecentMessages = async (
     .limit(20)
 
   if (error) {
-    console.log(error)
+    console.error("Failed to fetch recent messages:", error.message)
     return []
   }
 
   return data
 }
 
+const clearConversationHistory = async (conversationId) => {
+  const { error } = await supabase
+    .from("messages")
+    .delete()
+    .eq("conversation_id", conversationId)
+
+  if (error) {
+    console.error("Failed to clear conversation history:", error.message)
+    return false
+  }
+
+  return true
+}
+
 module.exports = {
   getOrCreateConversation,
   saveMessage,
-  getRecentMessages
+  getRecentMessages,
+  clearConversationHistory
 }
